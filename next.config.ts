@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  output: "standalone",
   reactStrictMode: true,
   typescript: {
     // change to false if you'd like to fail builds on TS errors
@@ -13,5 +14,6 @@ const nextConfig: NextConfig = {
     ignoreDuringBuilds: false
   },
 };
+
 
 export default nextConfig;
