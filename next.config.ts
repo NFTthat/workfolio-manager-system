@@ -13,6 +13,16 @@ const nextConfig: NextConfig = {
     // adjust for dev; set to false to avoid build-time failures
     ignoreDuringBuilds: false
   },
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'yusyahtoetemmuqtgtrp.supabase.co',
+        port: '',
+        pathname: '/storage/v1/object/public/**',
+      },
+    ],
+  },
 };
 
 

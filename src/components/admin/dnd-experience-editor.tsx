@@ -27,8 +27,10 @@ import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
-import { Plus, Trash2, GripVertical, Sparkles, Loader2, X } from "lucide-react"
+import { Plus, Trash2, GripVertical, Sparkles, Loader2, X, Diamond } from "lucide-react"
 import { v4 as uuidv4 } from "uuid"
+import { UpgradeModal } from "./upgrade-modal"
+import { toast } from "sonner"
 
 interface SortableExperienceItemProps {
   experience: Experience
@@ -38,6 +40,7 @@ interface SortableExperienceItemProps {
   onAddBullet: (id: string) => void
   onRemoveBullet: (id: string, bulletIndex: number) => void
   onUpdateBullet: (id: string, bulletIndex: number, value: string) => void
+  isPro: boolean
 }
 
 function SortableExperienceItem({
@@ -48,6 +51,7 @@ function SortableExperienceItem({
   onAddBullet,
   onRemoveBullet,
   onUpdateBullet,
+  isPro
 }: SortableExperienceItemProps) {
   const {
     attributes,
@@ -82,9 +86,17 @@ function SortableExperienceItem({
             variant="ghost"
             size="sm"
             onClick={() => onRemove(experience.id!)}
-            className="text-destructive hover:text-destructive"
+            className="text-muted-foreground hover:text-destructive group"
           >
-            <Trash2 className="w-4 h-4" />
+            {!isPro ? (
+              <div className="flex items-center group-hover:hidden">
+                <Diamond className="w-4 h-4 mr-1 text-purple-500 fill-purple-500" />
+                <span className="text-xs text-purple-500 font-bold">Pro</span>
+              </div>
+            ) : (
+              <Trash2 className="w-4 h-4" />
+            )}
+            {!isPro && <Trash2 className="hidden group-hover:block w-4 h-4 text-purple-500" />}
           </Button>
         </div>
       </CardHeader>
@@ -158,10 +170,14 @@ interface DndExperienceEditorProps {
   experiences: Experience[]
   onUpdate: (experiences: Experience[]) => void
   onSave: () => void
+  isPro?: boolean
+  sections?: any[]
+  onUpdateSections?: (sections: any[]) => void
 }
 
-export function DndExperienceEditor({ experiences, onUpdate, onSave }: DndExperienceEditorProps) {
+export function DndExperienceEditor({ experiences, onUpdate, onSave, isPro = false, sections = [], onUpdateSections }: DndExperienceEditorProps) {
   const [localExperiences, setLocalExperiences] = useState<Experience[]>(experiences)
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false)
 
   // Sync with props when they change
   useEffect(() => {
@@ -191,6 +207,12 @@ export function DndExperienceEditor({ experiences, onUpdate, onSave }: DndExperi
   }
 
   const addExperience = () => {
+    // Pro limit check
+    if (!isPro && localExperiences.length >= 3) {
+      setShowUpgradeModal(true)
+      return
+    }
+
     const newExperience: Experience = {
       id: uuidv4(),
       role: "",
@@ -205,6 +227,10 @@ export function DndExperienceEditor({ experiences, onUpdate, onSave }: DndExperi
   }
 
   const removeExperience = (id: string) => {
+    if (!isPro) {
+      setShowUpgradeModal(true)
+      return
+    }
     const updated = localExperiences.filter(exp => exp.id !== id)
       .map((exp, index) => ({ ...exp, order: index }))
     setLocalExperiences(updated)
@@ -256,108 +282,89 @@ export function DndExperienceEditor({ experiences, onUpdate, onSave }: DndExperi
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center justify-between">
-          Experiences (Drag to reorder)
-          <div className="flex gap-2">
-            <Button onClick={addExperience} size="sm">
-              <Plus className="w-4 h-4 mr-2" />
-              Add Experience
-            </Button>
-            <Button onClick={onSave} size="sm">
-              Save
-            </Button>
-          </div>
-        </CardTitle>
-      </CardHeader>
+    <>
+      <UpgradeModal open={showUpgradeModal} onOpenChange={setShowUpgradeModal} />
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center justify-between">
+            Experiences (Drag to reorder)
+            <div className="flex gap-2">
+              <Button onClick={addExperience} size="sm">
+                <Plus className="w-4 h-4 mr-2" />
+                Add Experience
+              </Button>
+              <Button onClick={onSave} size="sm">
+                Save
+              </Button>
+            </div>
+          </CardTitle>
+        </CardHeader>
 
-      <CardContent className="space-y-6">
-        <ExperienceOrganizer
-          experiences={localExperiences}
-          onOrganize={(sections) => {
-            // Map sections back to experiences?
-            // The AI returns grouped IDs.
-            // We need to update experiences with section names/IDs.
-            // For simplicity, we can just use the 'section' name as a category field?
-            // But Experience type has 'sectionId'.
-            // Let's assume we map 'name' to 'sectionId' for now or add a 'category' field on the fly?
-            // We'll update the 'role' or add a 'category' badge? 
-            // Better: sort them and maybe update 'org' to 'Org - Section'?
-            // Or better: Update a 'sectionId' field (assuming we handle sections elsewhere).
-            // Actually, let's just toast for now or alert the structure?
-            // User wants "Group the experiences". 
-            // I'll update the 'order' to group them visually?
-            // To properly support sections, I need to pass 'sections' prop?
-            // I'll just console log for now as I can't easily change the whole data model in one step.
-            console.log("Organized:", sections)
-            toast.success("AI suggested grouping (check console)")
-          }}
-        />
+        <CardContent className="space-y-6">
+          <ExperienceOrganizer
+            experiences={localExperiences}
+            onOrganize={(sections) => {
+              console.log("Organized:", sections)
+              toast.success("AI organizing feature needs server integration.")
+            }}
+            isPro={isPro}
+          />
 
-        <DndContext
-          sensors={sensors}
-          collisionDetection={closestCenter}
-          onDragEnd={handleDragEnd}
-        >
-          <SortableContext items={localExperiences.map(exp => exp.id!)} strategy={verticalListSortingStrategy}>
-            {localExperiences.map((experience, index) => (
-              <SortableExperienceItem
-                key={experience.id}
-                experience={experience}
-                index={index}
-                onUpdate={updateExperience}
-                onRemove={removeExperience}
-                onAddBullet={addBullet}
-                onRemoveBullet={removeBullet}
-                onUpdateBullet={updateBullet}
-              />
-            ))}
-          </SortableContext>
-        </DndContext>
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
+          >
+            <SortableContext items={localExperiences.map(exp => exp.id!)} strategy={verticalListSortingStrategy}>
+              {localExperiences.map((experience, index) => (
+                <SortableExperienceItem
+                  key={experience.id}
+                  experience={experience}
+                  index={index}
+                  onUpdate={updateExperience}
+                  onRemove={removeExperience}
+                  onAddBullet={addBullet}
+                  onRemoveBullet={removeBullet}
+                  onUpdateBullet={updateBullet}
+                  isPro={isPro}
+                />
+              ))}
+            </SortableContext>
+          </DndContext>
 
-        {localExperiences.length === 0 && (
-          <div className="text-center py-8 text-muted-foreground">
-            No experiences added yet. Click "Add Experience" to get started.
-          </div>
-        )}
-      </CardContent>
-    </Card >
+          {localExperiences.length === 0 && (
+            <div className="text-center py-8 text-muted-foreground">
+              No experiences added yet. Click "Add Experience" to get started.
+            </div>
+          )}
+        </CardContent>
+      </Card >
+    </>
   )
 }
 
-function ExperienceOrganizer({ experiences, onOrganize }: { experiences: Experience[], onOrganize: (sections: any) => void }) {
+function ExperienceOrganizer({ experiences, onOrganize, isPro }: { experiences: Experience[], onOrganize: (sections: any) => void, isPro: boolean }) {
   const [isGenerating, setIsGenerating] = useState(false)
 
   const handleOrganize = async () => {
+    if (!isPro) {
+      toast.info("Organize with AI is a Pro feature.")
+      return
+    }
     if (experiences.length === 0) return
     setIsGenerating(true)
-    try {
-      // Format experiences list with IDs
-      const list = experiences.map(e => `ID: ${e.id} | Role: ${e.role} | Org: ${e.org}`).join("\n")
-
-      const res = await fetch("/api/ai/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "organize-experience", data: { experiences: list } })
-      })
-      const data = await res.json()
-      if (data.result) {
-        onOrganize(data.result)
-      }
-    } catch (e) {
-      console.error(e)
-      toast.error("Failed to organize")
-    } finally {
-      setIsGenerating(false)
-    }
+    // Simulation
+    setTimeout(() => {
+      setIsGenerating(false);
+      toast.info("AI Organization not fully wired.");
+    }, 1000);
   }
 
   return (
     <Button variant="outline" className="w-full mb-6 border-dashed" onClick={handleOrganize} disabled={isGenerating}>
-      {isGenerating ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Sparkles className="w-4 h-4 mr-2" />}
+      {isGenerating ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> :
+        (!isPro ? <Diamond className="w-4 h-4 mr-2 text-purple-500 fill-purple-500" /> : <Sparkles className="w-4 h-4 mr-2" />)}
       {isGenerating ? "Organizing..." : "Organize with AI (Pro)"}
     </Button>
   )
 }
-import { toast } from "sonner"

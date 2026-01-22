@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -67,6 +67,7 @@ export function UsersTab() {
                 throw new Error("Failed to update role")
             }
         } catch (error) {
+            console.error("Role update failed:", error)
             toast.error("Failed to update user role")
         }
     }
@@ -86,6 +87,7 @@ export function UsersTab() {
                 throw new Error("Failed to update plan")
             }
         } catch (error) {
+            console.error("Plan update failed:", error)
             toast.error("Failed to update user plan")
         }
     }
@@ -105,6 +107,7 @@ export function UsersTab() {
                 throw new Error("Failed to delete user")
             }
         } catch (error) {
+            console.error("Delete user failed:", error)
             toast.error("Failed to delete user")
         }
     }

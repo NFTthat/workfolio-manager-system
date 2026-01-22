@@ -32,7 +32,7 @@ export function HeroSection({ meta }: HeroSectionProps) {
               👋 Welcome to my portfolio
             </Badge>
             <h1 className="text-4xl md:text-6xl font-bold tracking-tight">
-              Hi, I'm{" "}
+              Hi, I&apos;m{" "}
               <span className="text-primary">
                 {meta.name}
               </span>

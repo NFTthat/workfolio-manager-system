@@ -38,7 +38,7 @@ export function ContactSection({ contact, meta }: ContactSectionProps) {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <MessageCircle className="w-5 h-5 text-primary" />
-                  Let's Connect
+                  Let&apos;s Connect
                 </CardTitle>
               </CardHeader>
               <CardContent>

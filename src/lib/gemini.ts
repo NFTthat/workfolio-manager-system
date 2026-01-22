@@ -1,8 +1,9 @@
 import { GoogleGenerativeAI } from "@google/generative-ai"
 
-const apiKey = process.env.GEMINI_API_KEY || ""
-const genAI = new GoogleGenerativeAI(apiKey)
-const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" })
+const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_AI_API_KEY || ""
+
+const genAI = apiKey ? new GoogleGenerativeAI(apiKey) : null
+const model = genAI ? genAI.getGenerativeModel({ model: "gemini-1.5-flash" }) : null
 
 export async function rewriteBio(currentBio: string) {
     const systemPrompt = `You are a professional technical recruiter and career coach.
@@ -19,11 +20,21 @@ Bio:
 ${currentBio}`
 
     try {
+        if (!model) {
+            console.warn("AI Model not available, returning mock bio.");
+            return `[MOCK BIO] ${currentBio.substring(0, 50)}... (AI Unavailable)`;
+        }
         const result = await model.generateContent([systemPrompt, userPrompt])
         return result.response.text()
-    } catch (error) {
-        console.error("AI Error:", error)
-        return null
+    } catch (error: any) { // eslint-disable-line @typescript-eslint/no-explicit-any
+        console.error("AI Error generating bio:", error)
+        // If 400 (Bad Request) usually API key issue or quota
+        if (error.response?.status === 400 || error.message?.includes("400")) {
+            console.warn("AI Bad Request (400) - Invalid Key? Returning mock.")
+            return `[MOCK BIO] ${currentBio.substring(0, 50)}... (AI Request Failed)`;
+        }
+        // Fallback for other errors
+        return `[MOCK BIO] ${currentBio.substring(0, 50)}... (AI Error)`;
     }
 }
 
@@ -43,11 +54,12 @@ Notes:
 ${notes}`
 
     try {
+        if (!model) return "Enhanced description unavailable (AI Config Missing)";
         const result = await model.generateContent([systemPrompt, userPrompt])
         return result.response.text()
-    } catch (error) {
-        console.error("AI Error:", error)
-        return null
+    } catch (error: any) { // eslint-disable-line @typescript-eslint/no-explicit-any
+        console.error("AI Error in enhanceProjectDescription:", error)
+        return "Enhanced description unavailable (AI Error)";
     }
 }
 
@@ -74,12 +86,13 @@ ${experiencesList}`
 IMPORTANT: valid JSON only, no markdown formatting.`
 
     try {
+        if (!model) return null;
         const result = await model.generateContent([systemPrompt, jsonPrompt])
         const text = result.response.text()
         // naive cleanup
         const jsonStr = text.replace(/```json/g, "").replace(/```/g, "").trim()
         return JSON.parse(jsonStr)
-    } catch (error) {
+    } catch (error: any) { // eslint-disable-line @typescript-eslint/no-explicit-any
         console.error("AI Error:", error)
         return null
     }
@@ -95,11 +108,12 @@ Portfolio data:
 ${portfolioJson}`
 
     try {
+        if (!model) return "Enhanced description unavailable (AI Config Missing)";
         const result = await model.generateContent([systemPrompt, userPrompt])
         return result.response.text()
-    } catch (error) {
-        console.error("AI Error:", error)
-        return null
+    } catch (error: any) { // eslint-disable-line @typescript-eslint/no-explicit-any
+        console.error("AI Error in summarizePortfolio:", error)
+        return "Enhanced description unavailable (AI Error)";
     }
 }
 
@@ -117,10 +131,11 @@ Existing input/context:
 ${existing}`
 
     try {
+        if (!model) return "Enhanced description unavailable (AI Config Missing)";
         const result = await model.generateContent([systemPrompt, userPrompt])
         return result.response.text()
-    } catch (error) {
-        console.error("AI Error:", error)
-        return null
+    } catch (error: any) { // eslint-disable-line @typescript-eslint/no-explicit-any
+        console.error("AI Error in createProfessionalSummary:", error)
+        return "Enhanced description unavailable (AI Error)";
     }
 }

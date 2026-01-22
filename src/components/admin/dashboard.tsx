@@ -13,7 +13,9 @@ import {
     Loader2,
     Edit,
     Eye,
-    Plus
+    Plus,
+    Diamond,
+    Sparkles
 } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { ContentEditor } from "@/components/admin/content-editor"
@@ -23,17 +25,24 @@ import { PortfolioContent } from "@/lib/types/portfolio"
 
 interface AdminDashboardProps {
     user: any
+    initialData: PortfolioContent | null
 }
 
-export default function AdminDashboard({ user }: AdminDashboardProps) {
+export default function AdminDashboard({ user, initialData }: AdminDashboardProps) {
     const router = useRouter()
-    const [portfolioData, setPortfolioData] = useState<PortfolioContent | null>(null)
-    const [isLoading, setIsLoading] = useState(true)
+    const [portfolioData, setPortfolioData] = useState<PortfolioContent | null>(initialData)
+    const [isLoading, setIsLoading] = useState(!initialData)
     const [activeTab, setActiveTab] = useState("dashboard")
     const [editorTab, setEditorTab] = useState<string>("meta")
     const supabase = createClient()
+    const isPro = user.isPro || user.app_metadata?.plan === 'pro' || user.user_metadata?.plan === 'pro';
 
     useEffect(() => {
+        if (initialData) {
+            setIsLoading(false)
+            return
+        }
+
         const fetchPortfolioData = async () => {
             try {
                 const response = await fetch("/api/portfolio/admin")
@@ -49,7 +58,7 @@ export default function AdminDashboard({ user }: AdminDashboardProps) {
         }
 
         fetchPortfolioData()
-    }, [])
+    }, [initialData])
 
     const handleSignOut = async () => {
         await supabase.auth.signOut()
@@ -72,18 +81,24 @@ export default function AdminDashboard({ user }: AdminDashboardProps) {
 
     return (
         <div className="min-h-screen bg-muted/30">
-            <header className="bg-background border-b">
+            <header className="bg-background border-b sticky top-0 z-50">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex justify-between items-center py-4">
                         <div className="flex items-center space-x-4">
-                            <h1 className="text-2xl font-bold">Admin Dashboard</h1>
-                            <Badge variant="secondary">Admin</Badge>
+                            <h1 className="text-2xl font-bold bg-gradient-to-r from-primary to-purple-600 bg-clip-text text-transparent">🤖 Workfolio</h1>
+                            {isPro ? <Badge className="bg-purple-500 hover:bg-purple-600"><Diamond className="w-3 h-3 mr-1 fill-white" /> Pro</Badge> : <Badge variant="secondary">Free</Badge>}
                         </div>
                         <div className="flex items-center space-x-4">
-                            <span className="text-sm text-muted-foreground">
-                                Welcome, {user.email}
+                            {!isPro && (
+                                <Button size="sm" className="hidden sm:flex bg-gradient-to-r from-indigo-500 to-purple-600 text-white border-0 shadow-lg hover:shadow-xl transition-all">
+                                    <Diamond className="w-4 h-4 mr-2 fill-white" />
+                                    Join Pro - 50% Off
+                                </Button>
+                            )}
+                            <span className="text-sm text-muted-foreground hidden md:inline-block">
+                                {user.email}
                             </span>
-                            <Button variant="outline" size="sm" onClick={handleSignOut}>
+                            <Button variant="ghost" size="sm" onClick={handleSignOut}>
                                 <LogOut className="w-4 h-4 mr-2" />
                                 Sign Out
                             </Button>
@@ -94,10 +109,13 @@ export default function AdminDashboard({ user }: AdminDashboardProps) {
 
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
                 <Tabs value={activeTab} onValueChange={setActiveTab}>
-                    <TabsList className="mb-8">
+                    <TabsList className="mb-8 w-full justify-start overflow-x-auto">
                         <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
-                        <TabsTrigger value="content">Content Editor</TabsTrigger>
-                        <TabsTrigger value="users">Users</TabsTrigger>
+                        <TabsTrigger value="content">Workfolio Editor</TabsTrigger>
+                        {/* Users tab strictly for admin role check, separate from Pro */}
+                        {(user.user_metadata?.role === 'admin' || user.email?.includes('admin')) && (
+                            <TabsTrigger value="users">Users</TabsTrigger>
+                        )}
                         <TabsTrigger value="settings">Settings</TabsTrigger>
                     </TabsList>
 
@@ -134,6 +152,26 @@ export default function AdminDashboard({ user }: AdminDashboardProps) {
                                             </div>
                                         </CardContent>
                                     </Card>
+
+                                    {!isPro && (
+                                        <Card className="mt-6 bg-gradient-to-br from-indigo-50 to-purple-50 border-purple-100">
+                                            <CardHeader>
+                                                <CardTitle className="text-purple-700 flex items-center">
+                                                    <Diamond className="w-4 h-4 mr-2" /> Upgrade to Pro
+                                                </CardTitle>
+                                            </CardHeader>
+                                            <CardContent>
+                                                <ul className="space-y-2 text-sm text-purple-900 mb-4">
+                                                    <li className="flex items-center"><Sparkles className="w-3 h-3 mr-2" /> Unlimited Experiences</li>
+                                                    <li className="flex items-center"><Sparkles className="w-3 h-3 mr-2" /> Custom Categories</li>
+                                                    <li className="flex items-center"><Sparkles className="w-3 h-3 mr-2" /> AI Assistant</li>
+                                                </ul>
+                                                <Button className="w-full bg-purple-600 hover:bg-purple-700 text-white">
+                                                    Upgrade Now
+                                                </Button>
+                                            </CardContent>
+                                        </Card>
+                                    )}
                                 </div>
 
                                 <div className="lg:col-span-3 space-y-6">
@@ -219,15 +257,15 @@ export default function AdminDashboard({ user }: AdminDashboardProps) {
                         ) : (
                             <Card className="border-dashed">
                                 <CardHeader>
-                                    <CardTitle>Welcome to your Portfolio</CardTitle>
+                                    <CardTitle>Welcome to your Workfolio</CardTitle>
                                 </CardHeader>
                                 <CardContent className="flex flex-col items-center justify-center py-12 space-y-4">
                                     <p className="text-muted-foreground text-center max-w-md">
-                                        You haven't created a portfolio yet. Get started by organizing your experiences, projects, and skills.
+                                        You haven't created a workfolio yet. Get started by organizing your experiences, projects, and skills.
                                     </p>
                                     <Button onClick={() => handleQuickAction("meta")}>
                                         <Plus className="w-4 h-4 mr-2" />
-                                        Create Your First Portfolio
+                                        Create Your First Workfolio
                                     </Button>
                                 </CardContent>
                             </Card>
@@ -239,6 +277,7 @@ export default function AdminDashboard({ user }: AdminDashboardProps) {
                             initialContent={portfolioData || undefined}
                             defaultTab={editorTab}
                             key={editorTab + (portfolioData ? "loaded" : "loading")}
+                            isPro={isPro}
                         />
                     </TabsContent>
 

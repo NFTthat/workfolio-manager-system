@@ -1,5 +1,5 @@
 import { db } from "@/lib/db"
-import { DEFAULT_PORTFOLIO_CONTENT, PortfolioContent } from "@/lib/types/portfolio"
+import { PortfolioContent } from "@/lib/types/portfolio"
 
 export async function getPortfolioContent(userId?: string): Promise<PortfolioContent | null> {
     try {

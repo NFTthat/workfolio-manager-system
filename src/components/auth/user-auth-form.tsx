@@ -71,7 +71,6 @@ export function UserAuthForm({ className, type, ...props }: UserAuthFormProps) {
         if (error) throw error
 
         toast.success("Signed in successfully")
-        router.refresh()
         router.push("/admin")
       }
     } catch (error) {

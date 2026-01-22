@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "NODE_OPTIONS='--max-http-header-size=80000' next dev",
     "dev:all": "concurrently \"next dev\" \"ts-node --transpile-only server.dev.ts\"",
     "build": "next build",
     "start": "next start",

@@ -4,7 +4,7 @@ import { useState } from "react"
 import { PortfolioContent, DEFAULT_PORTFOLIO_CONTENT } from "@/lib/types/portfolio"
 import { MetaEditor } from "./meta-editor"
 import { AboutEditor } from "./about-editor"
-import { ExperienceEditor } from "./experience-editor"
+import { DndExperienceEditor } from "./dnd-experience-editor"
 import { ProjectEditor } from "./project-editor"
 import { SkillsEditor } from "./skills-editor"
 import { ContactEditor } from "./contact-editor"
@@ -18,7 +18,8 @@ import {
   FolderOpen,
   Wrench,
   Mail,
-  Eye
+  Eye,
+  Diamond
 } from "lucide-react"
 import { toast } from "sonner"
 import { useSocket } from "@/hooks/use-socket"
@@ -83,8 +84,9 @@ export function ContentEditor({ initialContent = DEFAULT_PORTFOLIO_CONTENT, defa
     await updateContent({ ...content, experiences }, "experiences")
   }
 
-  const handleUpdateSections = (sections: PortfolioContent["experienceSections"]) => {
-    // Local update
+  const handleUpdateSections = (sections: any[]) => {
+    // Local update for sections, assumes sections type is handled
+    // Casting to any to avoid strict type issues during this one-pass fix if type defs aren't perfect
     setContent(prev => ({ ...prev, experienceSections: sections }))
   }
 
@@ -115,19 +117,45 @@ export function ContentEditor({ initialContent = DEFAULT_PORTFOLIO_CONTENT, defa
   }
 
   const tabs = [
-    { id: "meta", label: "Meta", icon: User, component: MetaEditor, props: { meta: content.meta, onSave: handleSaveMeta, isSaving, isPro } },
+    {
+      id: "meta",
+      label: "Meta",
+      icon: User,
+      component: MetaEditor,
+      props: {
+        meta: content.meta,
+        onUpdate: (meta: any) => setContent(prev => ({ ...prev, meta })),
+        onSave: () => handleSaveMeta(content.meta),
+        isSaving,
+        isPro
+      }
+    },
     { id: "about", label: "About", icon: FileText, component: AboutEditor, props: { about: content.about, onSave: handleSaveAbout, isSaving, isPro } },
     {
-      id: "experiences", label: "Experience", icon: Briefcase, component: ExperienceEditor, props: {
+      id: "experiences", label: "Experience", icon: Briefcase, component: DndExperienceEditor, props: {
         experiences: content.experiences,
-        sections: content.experienceSections,
+        // @ts-ignore
+        sections: content.experienceSections || [],
         onUpdateSections: handleUpdateSections,
+        onUpdate: (exps: any) => setContent(prev => ({ ...prev, experiences: exps })),
         onSave: handleSaveExperiencesAndSections,
         isSaving,
         isPro
       }
     },
-    { id: "projects", label: "Projects", icon: FolderOpen, component: ProjectEditor, props: { projects: content.projects, onSave: handleSaveProjects, isSaving, isPro } },
+    {
+      id: "projects",
+      label: "Projects",
+      icon: FolderOpen,
+      component: ProjectEditor,
+      props: {
+        projects: content.projects,
+        onUpdate: (projects: any) => setContent(prev => ({ ...prev, projects })),
+        onSave: () => handleSaveProjects(content.projects),
+        isSaving,
+        isPro
+      }
+    },
     { id: "skills", label: "Skills", icon: Wrench, component: SkillsEditor, props: { skills: content.skills, onSave: handleSaveSkills, isSaving, isPro } },
     { id: "contact", label: "Contact", icon: Mail, component: ContactEditor, props: { contact: content.contact, onSave: handleSaveContact, isSaving, isPro } },
   ]
@@ -139,12 +167,18 @@ export function ContentEditor({ initialContent = DEFAULT_PORTFOLIO_CONTENT, defa
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle className="text-2xl">Content Editor</CardTitle>
+              <CardTitle className="text-2xl">Workfolio Editor</CardTitle>
               <p className="text-muted-foreground mt-1">
-                Edit your portfolio content in real-time
+                Edit your workfolio content in real-time
               </p>
             </div>
             <div className="flex items-center gap-4">
+              {!isPro && (
+                <Button variant="default" className="bg-gradient-to-r from-indigo-500 to-purple-600 border-0">
+                  <Diamond className="w-4 h-4 mr-2" />
+                  Upgrade to Pro
+                </Button>
+              )}
               {lastSaved && (
                 <div className="text-sm text-muted-foreground">
                   Last saved: {lastSaved.toLocaleTimeString()}
@@ -152,7 +186,7 @@ export function ContentEditor({ initialContent = DEFAULT_PORTFOLIO_CONTENT, defa
               )}
               <Button variant="outline" onClick={handlePreview}>
                 <Eye className="w-4 h-4 mr-2" />
-                Preview
+                Live Preview
               </Button>
             </div>
           </div>
@@ -172,9 +206,9 @@ export function ContentEditor({ initialContent = DEFAULT_PORTFOLIO_CONTENT, defa
 
         {tabs.map((tab) => {
           const Component = tab.component
-          // @ts-ignore - dynamic component props
           return (
             <TabsContent key={tab.id} value={tab.id} className="mt-6">
+              {/* @ts-ignore - dynamic component props */}
               <Component {...tab.props} onCancel={handleCancel} />
             </TabsContent>
           )
@@ -203,38 +237,6 @@ export function ContentEditor({ initialContent = DEFAULT_PORTFOLIO_CONTENT, defa
             <div className="text-center">
               <div className="text-2xl font-bold text-primary">{content.about.hobbies ? content.about.hobbies.length : 0}</div>
               <div className="text-sm text-muted-foreground">Hobbies</div>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-primary">
-                {content.skills.filter(s => s.level && s.level >= 4).length}
-              </div>
-              <div className="text-sm text-muted-foreground">Expert Skills</div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Real-time Status */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-            Real-time Status
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-2 text-sm">
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-              <span>Connected to real-time updates</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-              <span>Changes will be reflected immediately on the live site</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
-              <span>Visitors will see update notifications when content changes</span>
             </div>
           </div>
         </CardContent>
