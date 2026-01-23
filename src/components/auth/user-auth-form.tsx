@@ -44,41 +44,41 @@ export function UserAuthForm({ className, type, ...props }: UserAuthFormProps) {
   const supabase = createClient()
 
   async function onSubmit(data: FormData) {
-    setEmailLoading(true)
+  setEmailLoading(true)
 
-    try {
-      if (type === "register") {
-        const { error } = await supabase.auth.signUp({
-          email: data.email,
-          password: data.password,
-          options: {
-            emailRedirectTo: `${location.origin}/auth/callback`,
-            data: {
-              role: 'user'
-            }
-          },
-        })
+  try {
+    if (type === "register") {
+      const { error } = await supabase.auth.signUp({
+        email: data.email,
+        password: data.password,
+        options: {
+          emailRedirectTo: `${location.origin}/auth/callback`
+        },
+      })
 
-        if (error) throw error
+      if (error) throw error
 
-        toast.success("Account created! Check your email to confirm.")
-      } else {
-        const { error } = await supabase.auth.signInWithPassword({
-          email: data.email,
-          password: data.password,
-        })
+      toast.success("Account created! You can now sign in.")
+      router.push("/sign-in")
+    } else {
+      const { error } = await supabase.auth.signInWithPassword({
+        email: data.email,
+        password: data.password,
+      })
 
-        if (error) throw error
+      if (error) throw error
 
-        toast.success("Signed in successfully")
-        router.push("/admin")
-      }
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Authentication failed")
-    } finally {
-      setEmailLoading(false)
+      toast.success("Signed in successfully")
+      router.push("/admin")
     }
+  } catch (error) {
+    toast.error(
+      error instanceof Error ? error.message : "Authentication failed"
+    )
+  } finally {
+    setEmailLoading(false)
   }
+}
 
   async function onOAuthSignIn(provider: "github" | "google") {
     if (provider === "github") setGithubLoading(true)
