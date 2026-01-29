@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { portfolioContentSchema } from "@/lib/validators";
 import { createClient } from "@/lib/supabase/server";
-import { createServerClient } from '@supabase/ssr'
+
 
 
 export async function GET() {

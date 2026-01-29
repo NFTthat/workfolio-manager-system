@@ -1,8 +1,11 @@
-import { createBrowserClient } from "@supabase/ssr";
+import { createBrowserClient } from '@supabase/ssr'
 
 export function createClient() {
+  // ADD THIS LINE TO DEBUG
+  console.log("Supabase URL:", process.env.NEXT_PUBLIC_SUPABASE_URL);
+
   return createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
+  )
 }

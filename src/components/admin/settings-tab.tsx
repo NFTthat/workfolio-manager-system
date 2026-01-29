@@ -51,6 +51,22 @@ export function SettingsTab({ user }: SettingsTabProps) {
         }
     }
 
+    const [isLoading, setIsLoading] = useState(false);
+
+    const handleUpgrade = async () => {
+        try {
+            setIsLoading(true);
+            const res = await fetch("/api/stripe/checkout", { method: "POST" });
+            if (!res.ok) throw new Error("Failed to create checkout session");
+            const data = await res.json();
+            window.location.href = data.url;
+        } catch (error) {
+            console.error("Upgrade failed:", error);
+            setIsLoading(false);
+            toast.error("Failed to initiate upgrade");
+        }
+    };
+
     return (
         <div className="space-y-6">
             <Card>
@@ -119,10 +135,16 @@ export function SettingsTab({ user }: SettingsTabProps) {
                     <div className="flex items-center justify-between p-4 border rounded-lg">
                         <div className="space-y-1">
                             <p className="font-medium">Current Plan</p>
-                            <p className="text-sm text-muted-foreground">You are currently on the <span className="font-semibold text-primary">{user?.plan === 'pro' ? 'Pro Plan 💎' : 'Free Plan'}</span></p>
+                            <p className="text-sm text-muted-foreground">You are currently on the <span className="font-semibold text-primary">{user?.isPro ? 'Pro Plan 💎' : 'Free Plan'}</span></p>
                         </div>
-                        {user?.plan !== 'pro' && (
-                            <Button variant="default" className="gap-2 bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white border-0">
+                        {!user?.isPro && (
+                            <Button
+                                variant="default"
+                                onClick={handleUpgrade}
+                                disabled={isLoading}
+                                className="gap-2 bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white border-0"
+                            >
+                                {isLoading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                                 Upgrade to Pro 💎
                             </Button>
                         )}
@@ -144,7 +166,7 @@ export function SettingsTab({ user }: SettingsTabProps) {
                             <p className="font-medium">Delete Account</p>
                             <p className="text-sm text-muted-foreground">Permanently remove your account and all data.</p>
                         </div>
-                        <DeleteAccountButton isPro={true} />
+                        <DeleteAccountButton isPro={user?.isPro} />
                     </div>
                 </CardContent>
             </Card>
@@ -163,8 +185,7 @@ function DeleteAccountButton({ isPro }: { isPro: boolean }) {
         try {
             const res = await fetch("/api/user/profile", { method: "DELETE" })
             if (!res.ok) {
-                if (res.status === 403) toast.error("Upgrade to Pro to delete account")
-                else toast.error("Failed to delete account")
+                toast.error("Failed to delete account")
                 return
             }
             toast.success("Account deleted")
@@ -175,6 +196,11 @@ function DeleteAccountButton({ isPro }: { isPro: boolean }) {
             setIsLoading(false)
         }
     }
+
+    // Allow everyone to delete account? Or strict? Code said "Pro Only" before.
+    // Assuming we want to UNLOCK it for everyone or keep it locked.
+    // The previous code had: if (!isPro) return Button disabled.
+    // I will keep it but fix the prop. Use user.isPro.
 
     if (!isPro) {
         return (

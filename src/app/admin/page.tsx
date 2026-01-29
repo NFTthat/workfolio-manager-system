@@ -3,6 +3,10 @@ import { createClient } from "@/lib/supabase/server";
 import AdminDashboard from "@/components/admin/dashboard";
 
 export default async function AdminPage() {
+
+
+
+
   const supabase = await createClient();
 
   const {
@@ -38,17 +42,20 @@ export default async function AdminPage() {
   const portfolioContent = portfolio?.content || null;
 
   // Load plan from users table (single source of truth)
+  // src/app/admin/page.tsx
+
   const { data: dbUser, error: planError } = await supabase
-  .from("users")
-  .select("plan")
-  .eq("id", user.id)
-  .maybeSingle(); // 👈 important
+    .from("users")
+    .select("plan")
+    .eq("id", user.id)
+    .single();
 
-if (planError) {
-  console.error("Failed to load user plan:", planError);
-}
+  if (planError) {
+    console.error("Failed to load user plan:", planError);
+  }
 
-const isPro = dbUser?.plan === "pro";
+  const isPro = dbUser?.plan === "pro";
+
 
 
   return (
@@ -57,4 +64,8 @@ const isPro = dbUser?.plan === "pro";
       initialData={portfolioContent}
     />
   );
+
+
+
+
 }

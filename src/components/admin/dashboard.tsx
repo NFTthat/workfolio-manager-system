@@ -35,7 +35,9 @@ export default function AdminDashboard({ user, initialData }: AdminDashboardProp
     const [activeTab, setActiveTab] = useState("dashboard")
     const [editorTab, setEditorTab] = useState<string>("meta")
     const supabase = createClient()
-    const isPro = user.isPro || user.app_metadata?.plan === 'pro' || user.user_metadata?.plan === 'pro';
+    // STRICT CHECK: Only trust the prop passed from the server (which queries the DB)
+    // Do NOT check user_metadata as it may be stale
+    const isPro = user.isPro;
 
     useEffect(() => {
         if (initialData) {
@@ -71,6 +73,19 @@ export default function AdminDashboard({ user, initialData }: AdminDashboardProp
         setActiveTab("content")
     }
 
+    const handleUpgrade = async () => {
+        try {
+            setIsLoading(true)
+            const res = await fetch("/api/stripe/checkout", { method: "POST" })
+            if (!res.ok) throw new Error("Failed to create checkout session")
+            const data = await res.json()
+            window.location.href = data.url
+        } catch (error) {
+            console.error("Upgrade failed:", error)
+            setIsLoading(false)
+        }
+    }
+
     if (isLoading) {
         return (
             <div className="min-h-screen flex items-center justify-center">
@@ -90,7 +105,7 @@ export default function AdminDashboard({ user, initialData }: AdminDashboardProp
                         </div>
                         <div className="flex items-center space-x-4">
                             {!isPro && (
-                                <Button size="sm" className="hidden sm:flex bg-gradient-to-r from-indigo-500 to-purple-600 text-white border-0 shadow-lg hover:shadow-xl transition-all">
+                                <Button size="sm" onClick={handleUpgrade} className="hidden sm:flex bg-gradient-to-r from-indigo-500 to-purple-600 text-white border-0 shadow-lg hover:shadow-xl transition-all">
                                     <Diamond className="w-4 h-4 mr-2 fill-white" />
                                     Join Pro - 50% Off
                                 </Button>
@@ -166,7 +181,7 @@ export default function AdminDashboard({ user, initialData }: AdminDashboardProp
                                                     <li className="flex items-center"><Sparkles className="w-3 h-3 mr-2" /> Custom Categories</li>
                                                     <li className="flex items-center"><Sparkles className="w-3 h-3 mr-2" /> AI Assistant</li>
                                                 </ul>
-                                                <Button className="w-full bg-purple-600 hover:bg-purple-700 text-white">
+                                                <Button onClick={handleUpgrade} className="w-full bg-purple-600 hover:bg-purple-700 text-white">
                                                     Upgrade Now
                                                 </Button>
                                             </CardContent>
