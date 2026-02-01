@@ -1,141 +1,113 @@
 import { GoogleGenerativeAI } from "@google/generative-ai"
 
-const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_AI_API_KEY || ""
+// Robust API Key check
+const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_AI_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API_KEY || ""
 
 const genAI = apiKey ? new GoogleGenerativeAI(apiKey) : null
-const model = genAI ? genAI.getGenerativeModel({ model: "gemini-1.5-flash" }) : null
+
+// FIX: Use the older, safer 'gemini-pro' model which works on v1beta
+// We use a getter to ensure we don't crash if API key is missing
+function getModel() {
+    if (!genAI) return null;
+    return genAI.getGenerativeModel({ model: "gemini-pro" }); 
+}
 
 export async function rewriteBio(currentBio: string) {
-    const systemPrompt = `You are a professional technical recruiter and career coach.
-You write concise, confident developer bios that highlight impact, clarity, and growth.`
-
-    const userPrompt = `Rewrite the following developer bio to be:
-- Clear and confident
-- Recruiter-friendly
-- Focused on impact, not buzzwords
-- Written in first person
-- Maximum 120 words
-
-Bio:
-${currentBio}`
+    // FIX: Combine system and user prompt manually (Old School method)
+    // This bypasses the "systemInstruction" compatibility issues
+    const combinedPrompt = `
+    ROLE: You are a professional technical recruiter and career coach.
+    TASK: Rewrite the following developer bio to be concise (max 120 words), confident, and impact-focused.
+    INPUT BIO: "${currentBio}"
+    `;
 
     try {
-        if (!model) {
-            console.warn("AI Model not available, returning mock bio.");
-            return `[MOCK BIO] ${currentBio.substring(0, 50)}... (AI Unavailable)`;
-        }
-        const result = await model.generateContent([systemPrompt, userPrompt])
+        const model = getModel();
+        if (!model) return `[MOCK BIO] ${currentBio.substring(0, 50)}... (AI Unavailable)`;
+
+        const result = await model.generateContent(combinedPrompt)
         return result.response.text()
-    } catch (error: any) { // eslint-disable-line @typescript-eslint/no-explicit-any
-        console.error("AI Error generating bio:", error)
-        // If 400 (Bad Request) usually API key issue or quota
-        if (error.response?.status === 400 || error.message?.includes("400")) {
-            console.warn("AI Bad Request (400) - Invalid Key? Returning mock.")
-            return `[MOCK BIO] ${currentBio.substring(0, 50)}... (AI Request Failed)`;
-        }
-        // Fallback for other errors
+    } catch (error: any) {
+        console.error("AI Error generating bio:", error.message)
         return `[MOCK BIO] ${currentBio.substring(0, 50)}... (AI Error)`;
     }
 }
 
 export async function enhanceProjectDescription(notes: string) {
-    const systemPrompt = `You are a senior software engineer helping developers present projects clearly and professionally.`
-
-    const userPrompt = `Turn the notes below into a polished portfolio project description.
-
-Requirements:
-- Explain the problem
-- Explain the solution
-- Mention the tech stack
-- Describe the outcome or impact
-- Keep it concise and skimmable
-
-Notes:
-${notes}`
+    const combinedPrompt = `
+    ROLE: Senior software engineer.
+    TASK: Turn these notes into a polished portfolio project description. Mention problem, solution, tech stack, and impact.
+    NOTES: "${notes}"
+    `;
 
     try {
+        const model = getModel();
         if (!model) return "Enhanced description unavailable (AI Config Missing)";
-        const result = await model.generateContent([systemPrompt, userPrompt])
+        
+        const result = await model.generateContent(combinedPrompt)
         return result.response.text()
-    } catch (error: any) { // eslint-disable-line @typescript-eslint/no-explicit-any
-        console.error("AI Error in enhanceProjectDescription:", error)
+    } catch (error: any) {
+        console.error("AI Error in enhanceProjectDescription:", error.message)
         return "Enhanced description unavailable (AI Error)";
     }
 }
 
 export async function organizeExperience(experiencesList: string) {
-    // experiencesList is a string representation of the experiences
-    const systemPrompt = `You help developers organize their professional experience into clear, meaningful categories.`
-
-    const userPrompt = `Group the experiences below into logical sections (e.g. Design, Engineering, Marketing).
-
-For each section:
-- Give it a clear name
-- Write a 1–2 sentence intro
-- Return the result as a valid JSON object with detailed structure: { sections: [{ name: "...", intro: "...", experienceIds: ["..."] }] }
-
-Experiences (with IDs):
-${experiencesList}`
-
-    // We need structured output here. 
-    // For simplicity, we'll ask for JSON in the prompt and parse it, 
-    // or use the responseSchema if we were using 1.5 Pro.
-    // Let's force JSON mode in the prompt for now.
-    const jsonPrompt = `${userPrompt}
-
-IMPORTANT: valid JSON only, no markdown formatting.`
+    const combinedPrompt = `
+    ROLE: Career organizer.
+    TASK: Group these experiences into logical sections (e.g. Engineering, Design).
+    FORMAT: Return ONLY valid JSON. No markdown. Structure: { sections: [{ name: "...", intro: "...", experienceIds: ["..."] }] }
+    EXPERIENCES: ${experiencesList}
+    `;
 
     try {
+        const model = getModel();
         if (!model) return null;
-        const result = await model.generateContent([systemPrompt, jsonPrompt])
+
+        const result = await model.generateContent(combinedPrompt)
         const text = result.response.text()
-        // naive cleanup
         const jsonStr = text.replace(/```json/g, "").replace(/```/g, "").trim()
         return JSON.parse(jsonStr)
-    } catch (error: any) { // eslint-disable-line @typescript-eslint/no-explicit-any
-        console.error("AI Error:", error)
-        return null
+    } catch (error: any) {
+        console.error("AI Error organizeExperience:", error.message)
+        return null;
     }
 }
 
 export async function summarizePortfolio(portfolioJson: string) {
-    const systemPrompt = `You summarize developer profiles for recruiters.`
-
-    const userPrompt = `Create a short professional summary based on this portfolio.
-Highlight strengths, focus areas, and unique value.
-
-Portfolio data:
-${portfolioJson}`
+    const combinedPrompt = `
+    ROLE: Recruiter.
+    TASK: Create a short professional summary based on this portfolio data. Highlight strengths.
+    DATA: ${portfolioJson}
+    `;
 
     try {
-        if (!model) return "Enhanced description unavailable (AI Config Missing)";
-        const result = await model.generateContent([systemPrompt, userPrompt])
+        const model = getModel();
+        if (!model) return "Summary unavailable";
+        
+        const result = await model.generateContent(combinedPrompt)
         return result.response.text()
-    } catch (error: any) { // eslint-disable-line @typescript-eslint/no-explicit-any
-        console.error("AI Error in summarizePortfolio:", error)
-        return "Enhanced description unavailable (AI Error)";
+    } catch (error: any) {
+        console.error("AI Error in summarizePortfolio:", error.message)
+        return "Summary unavailable (AI Error)";
     }
 }
 
 export async function createProfessionalSummary(existing: string) {
-    const systemPrompt = `You are a career consultant specialized in writing impactful professional summaries for developer portfolios.
-Structure the summary to immediately grab attention in a hero section.`
-
-    const userPrompt = `Write a compelling 2-3 sentence professional summary based on the following (or improve the existing one if provided).
-Focus on:
-- Core tech stack expertise
-- Years of experience or level (Senior, Lead, etc.)
-- Unique value proposition
-
-Existing input/context:
-${existing}`
+    const combinedPrompt = `
+    ROLE: Career Consultant.
+    TASK: Write a compelling 2-3 sentence professional summary for a developer portfolio hero section. Focus on tech stack and level.
+    CONTEXT: "${existing}"
+    `;
 
     try {
-        if (!model) return "Enhanced description unavailable (AI Config Missing)";
-        const result = await model.generateContent([systemPrompt, userPrompt])
+        const model = getModel();
+        if (!model) return "Summary unavailable";
+
+        const result = await model.generateContent(combinedPrompt)
         return result.response.text()
-    } catch (error: any) { // eslint-disable-line @typescript-eslint/no-explicit-any
-        console.error("AI Error in createProfessionalSummary:", error)
-        return "Enhanced description unavailable (AI Error)";
+    } catch (error: any) {
+        console.error("AI Error in createProfessionalSummary:", error.message)
+        return "Professional summary unavailable (AI Error)";
     }
 }
